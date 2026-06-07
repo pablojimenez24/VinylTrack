@@ -2,7 +2,7 @@
 // Importa tipos desde src/types/vinyl.ts (fuente de verdad del modelo)
 
 import { useState } from "react";
-import { Trash2, Check } from "lucide-react";
+import { Trash2, Check, Pencil } from "lucide-react";
 import type { Vinyl, Genre, Condition } from "../types/vinyl";
 
 // Re-export para uso en otros componentes (VinylForm, App)
@@ -31,10 +31,11 @@ const CONDITION_STYLES: Record<Condition, { bg: string; text: string }> = {
 interface Props {
   record: VinylRecord;
   onDelete?: (id: string) => void;
+  onEdit?:   (record: VinylRecord) => void;
   isPreview?: boolean;
 }
 
-export function VinylCard({ record, onDelete, isPreview = false }: Props) {
+export function VinylCard({ record, onDelete, onEdit, isPreview = false }: Props) {
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const genreColor    = GENRE_COLORS[record.genre];
@@ -145,34 +146,61 @@ export function VinylCard({ record, onDelete, isPreview = false }: Props) {
         </div>
       </div>
 
-      {/* Delete button — hidden until hover, stays visible in confirm state */}
-      {!isPreview && onDelete && (
-        <button
-          onClick={handleDeleteClick}
-          onBlur={() => setTimeout(() => setConfirmDelete(false), 200)}
-          className={`absolute bottom-3 right-3 flex items-center gap-1 transition-all duration-200 ${
-            confirmDelete ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-          }`}
-          style={{
-            background:   confirmDelete ? "rgba(224,82,82,0.15)" : "rgba(30,30,30,0.9)",
-            color:        confirmDelete ? "#E05252" : "#A0A0A0",
-            border:       confirmDelete ? "1px solid rgba(224,82,82,0.4)" : "1px solid rgba(255,255,255,0.1)",
-            borderRadius: "4px",
-            padding:      confirmDelete ? "4px 8px" : "5px 6px",
-            fontSize:     "11px",
-            fontFamily:   "'Inter', sans-serif",
-            cursor:       "pointer",
-          }}
-        >
-          {confirmDelete ? (
-            <>
-              <Check size={11} />
-              <span>Confirm?</span>
-            </>
-          ) : (
-            <Trash2 size={13} />
+      {/* Action buttons — hidden until hover */}
+      {!isPreview && (
+        <div className="absolute bottom-3 right-3 flex items-center gap-1.5">
+          {/* Edit button */}
+          {onEdit && (
+            <button
+              onClick={() => onEdit(record)}
+              className="opacity-0 group-hover:opacity-100 flex items-center transition-all duration-200"
+              style={{
+                background:   "rgba(30,30,30,0.9)",
+                color:        "#F5A623",
+                border:       "1px solid rgba(245,166,35,0.3)",
+                borderRadius: "4px",
+                padding:      "5px 6px",
+                fontSize:     "11px",
+                fontFamily:   "'Inter', sans-serif",
+                cursor:       "pointer",
+              }}
+              title="Edit vinyl"
+            >
+              <Pencil size={13} />
+            </button>
           )}
-        </button>
+
+          {/* Delete button */}
+          {onDelete && (
+            <button
+              onClick={handleDeleteClick}
+              onBlur={() => setTimeout(() => setConfirmDelete(false), 200)}
+              className={`flex items-center gap-1 transition-all duration-200 ${
+                confirmDelete ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+              }`}
+              style={{
+                background:   confirmDelete ? "rgba(224,82,82,0.15)" : "rgba(30,30,30,0.9)",
+                color:        confirmDelete ? "#E05252" : "#A0A0A0",
+                border:       confirmDelete ? "1px solid rgba(224,82,82,0.4)" : "1px solid rgba(255,255,255,0.1)",
+                borderRadius: "4px",
+                padding:      confirmDelete ? "4px 8px" : "5px 6px",
+                fontSize:     "11px",
+                fontFamily:   "'Inter', sans-serif",
+                cursor:       "pointer",
+              }}
+              title="Delete vinyl"
+            >
+              {confirmDelete ? (
+                <>
+                  <Check size={11} />
+                  <span>Confirm?</span>
+                </>
+              ) : (
+                <Trash2 size={13} />
+              )}
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

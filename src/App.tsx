@@ -1,7 +1,7 @@
 // App.tsx — SPA principal de VinylTrack
 // Conecta con Firebase Firestore a través de vinylService
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Navbar }               from "./components/Navbar";
 import { ToastProvider, showSuccess, showError } from "./components/Toast";
 import { VinylCard }            from "./components/VinylCard";
@@ -9,6 +9,7 @@ import { VinylForm }            from "./components/VinylForm";
 import type { VinylRecord }     from "./components/VinylCard";
 import type { GenreFilterType } from "./components/GenreFilter";
 import type { VinylFormData }   from "./components/VinylForm";
+import type { Vinyl }           from "./types/vinyl";
 import {
   getVinyls,
   addVinyl,
@@ -18,11 +19,15 @@ import {
 // ── Componente principal ───────────────────────────────────────────────────────
 
 export default function App() {
-  const [records, setRecords]       = useState<VinylRecord[]>([]);
-  const [search, setSearch]         = useState("");
+  const [records, setRecords]         = useState<VinylRecord[]>([]);
+  const [search, setSearch]           = useState("");
   const [activeGenre, setActiveGenre] = useState<GenreFilterType>("All");
-  const [loading, setLoading]       = useState(true);
-  const [error, setError]           = useState<string | null>(null);
+  const [loading, setLoading]         = useState(true);
+  const [error, setError]             = useState<string | null>(null);
+  const [vinylToEdit, setVinylToEdit] = useState<Vinyl | null>(null);
+
+  // Ref al formulario para el scroll automático al editar
+  const formRef = useRef<HTMLElement>(null);
 
   // ── Carga inicial desde Firestore ──────────────────────────────────────────
   useEffect(() => {
@@ -83,8 +88,25 @@ export default function App() {
     } catch (err) {
       console.error("Error adding vinyl:", err);
       showError("Could not save the vinyl. Try again.");
-      throw err; // Para que VinylForm no haga reset si falló
+      throw err;
     }
+  };
+
+  const handleEdit = (record: VinylRecord) => {
+    setVinylToEdit(record as Vinyl);
+    // Scroll suave al formulario
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+  };
+
+  const handleEditSuccess = () => {
+    // Recargar lista para reflejar el update en las cards
+    if (vinylToEdit?.id) {
+      getVinyls().then((v) => setRecords(v as VinylRecord[]));
+    }
+    setVinylToEdit(null);
+    showSuccess("Vinyl updated successfully!");
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -129,14 +151,26 @@ export default function App() {
               className="vinyl-grid"
             >
               {filtered.map((record) => (
-                <VinylCard key={record.id} record={record} onDelete={handleDelete} />
+                <VinylCard
+                  key={record.id}
+                  record={record}
+                  onDelete={handleDelete}
+                  onEdit={handleEdit}
+                />
               ))}
             </div>
           )}
         </section>
 
-        {/* ── Add Form section ────────────────────────────────────────── */}
-        <VinylForm onAdd={handleAdd} />
+        {/* ── Add / Edit Form section ──────────────────────────────── */}
+        <section ref={formRef}>
+          <VinylForm
+            onAdd={handleAdd}
+            initialData={vinylToEdit ?? undefined}
+            onSuccess={handleEditSuccess}
+            onCancel={() => setVinylToEdit(null)}
+          />
+        </section>
       </main>
 
       <style>{`

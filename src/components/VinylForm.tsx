@@ -1,12 +1,13 @@
 // VinylForm.tsx — adaptado de Figma Make
-// onAdd recibe solo los datos del form (sin id ni createdAt); Firebase genera el id
+// Soporta modo Add (sin initialData) y modo Edit (con initialData)
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { VinylCard } from "./VinylCard";
-import type { Genre, Condition } from "../types/vinyl";
+import type { Genre, Condition, Vinyl } from "../types/vinyl";
 import type { VinylRecord } from "./VinylCard";
 import { Loader2 } from "lucide-react";
+import { updateVinyl } from "../services/vinylService";
 
 interface FormValues {
   title:     string;
@@ -21,7 +22,10 @@ interface FormValues {
 export type VinylFormData = Omit<FormValues, 'year'> & { year: number };
 
 interface Props {
-  onAdd: (data: VinylFormData) => Promise<void>;
+  onAdd:        (data: VinylFormData) => Promise<void>;
+  initialData?: Vinyl;        // si se pasa, el form entra en modo edición
+  onSuccess?:   () => void;   // llamado al completar un update
+  onCancel?:    () => void;   // llamado al cancelar la edición
 }
 
 const GENRES:     Genre[]     = ["Rock", "Soul", "R&B", "Blues", "Salsa"];
@@ -54,8 +58,10 @@ const labelStyle: React.CSSProperties = {
   fontFamily:   "'Inter', sans-serif",
 };
 
-export function VinylForm({ onAdd }: Props) {
+export function VinylForm({ onAdd, initialData, onSuccess, onCancel }: Props) {
   const [saving, setSaving] = useState(false);
+  const isEditMode = Boolean(initialData);
+
   const {
     register,
     handleSubmit,
@@ -65,6 +71,22 @@ export function VinylForm({ onAdd }: Props) {
   } = useForm<FormValues>({
     defaultValues: { genre: "Rock", condition: "VG+" },
   });
+
+  // Cuando initialData cambia (usuario pulsa editar otra card), rellenamos el form
+  useEffect(() => {
+    if (initialData) {
+      reset({
+        title:     initialData.title,
+        artist:    initialData.artist,
+        genre:     initialData.genre,
+        year:      initialData.year,
+        coverUrl:  initialData.coverUrl ?? "",
+        condition: initialData.condition,
+      });
+    } else {
+      reset({ genre: "Rock", condition: "VG+" });
+    }
+  }, [initialData, reset]);
 
   const watchedValues = watch();
 
@@ -81,16 +103,26 @@ export function VinylForm({ onAdd }: Props) {
 
   const onSubmit = async (data: FormValues) => {
     setSaving(true);
-    await onAdd({ ...data, year: Number(data.year) });
-    reset({ genre: "Rock", condition: "VG+" });
-    setSaving(false);
+    try {
+      if (isEditMode && initialData?.id) {
+        // Modo edición: llama a updateVinyl y luego avisa al padre
+        await updateVinyl(initialData.id, { ...data, year: Number(data.year) });
+        onSuccess?.();
+      } else {
+        // Modo creación: llama a onAdd (manejado en App)
+        await onAdd({ ...data, year: Number(data.year) });
+        reset({ genre: "Rock", condition: "VG+" });
+      }
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <section style={{ padding: "0 0 64px" }}>
       {/* Amber divider + heading */}
       <div style={{ marginBottom: "32px" }}>
-        <div style={{ height: "1px", background: "#F5A623", marginBottom: "24px", opacity: 0.6 }} />
+        <div style={{ height: "1px", background: isEditMode ? "#3498DB" : "#F5A623", marginBottom: "24px", opacity: 0.6 }} />
         <h2
           style={{
             fontFamily: "'Playfair Display', serif",
@@ -99,7 +131,7 @@ export function VinylForm({ onAdd }: Props) {
             color:      "#F0EDE8",
           }}
         >
-          Add New Vinyl
+          {isEditMode ? "Edit Vinyl" : "Add New Vinyl"}
         </h2>
       </div>
 
@@ -217,38 +249,66 @@ export function VinylForm({ onAdd }: Props) {
               </select>
             </div>
 
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={saving}
-              style={{
-                width:           "100%",
-                background:      saving ? "rgba(245,166,35,0.5)" : "#F5A623",
-                color:           "#0D0D0D",
-                border:          "none",
-                borderRadius:    "4px",
-                padding:         "12px",
-                fontSize:        "15px",
-                fontWeight:      600,
-                fontFamily:      "'Inter', sans-serif",
-                cursor:          saving ? "not-allowed" : "pointer",
-                display:         "flex",
-                alignItems:      "center",
-                justifyContent:  "center",
-                gap:             "8px",
-                transition:      "background 0.15s",
-                marginTop:       "4px",
-              }}
-            >
-              {saving ? (
-                <>
-                  <Loader2 size={16} className="animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                "Add to Catalog"
+            {/* Submit + Cancel (modo edición) */}
+            <div style={{ display: "flex", gap: "12px", marginTop: "4px" }}>
+              <button
+                type="submit"
+                disabled={saving}
+                style={{
+                  flex:            1,
+                  background:      saving ? "rgba(245,166,35,0.5)" : "#F5A623",
+                  color:           "#0D0D0D",
+                  border:          "none",
+                  borderRadius:    "4px",
+                  padding:         "12px",
+                  fontSize:        "15px",
+                  fontWeight:      600,
+                  fontFamily:      "'Inter', sans-serif",
+                  cursor:          saving ? "not-allowed" : "pointer",
+                  display:         "flex",
+                  alignItems:      "center",
+                  justifyContent:  "center",
+                  gap:             "8px",
+                  transition:      "background 0.15s",
+                }}
+              >
+                {saving ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Saving...
+                  </>
+                ) : isEditMode ? (
+                  "Update Vinyl"
+                ) : (
+                  "Add to Catalog"
+                )}
+              </button>
+
+              {/* Cancel — solo visible en modo edición */}
+              {isEditMode && (
+                <button
+                  type="button"
+                  onClick={onCancel}
+                  disabled={saving}
+                  style={{
+                    flex:          "0 0 auto",
+                    background:    "transparent",
+                    color:         "#F5A623",
+                    border:        "1px solid rgba(245,166,35,0.6)",
+                    borderRadius:  "4px",
+                    padding:       "12px 20px",
+                    fontSize:      "15px",
+                    fontWeight:    500,
+                    fontFamily:    "'Inter', sans-serif",
+                    cursor:        saving ? "not-allowed" : "pointer",
+                    transition:    "border-color 0.15s, color 0.15s",
+                    whiteSpace:    "nowrap",
+                  }}
+                >
+                  Cancel
+                </button>
               )}
-            </button>
+            </div>
           </div>
 
           {/* RIGHT — live preview */}
