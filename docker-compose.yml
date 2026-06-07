@@ -1,0 +1,6 @@
+# docker-compose.yml
+services:
+  frontend:
+    build: .
+    ports:
+      - "3000:80"
