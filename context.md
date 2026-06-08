@@ -154,7 +154,7 @@ pnpm build
 ### ✅ Completado
 - [x] Diseño en Figma Make
 - [x] Exportación de VinylCard.tsx y VinylForm.tsx desde Figma
-- [ ] Proyecto Firebase creado y credenciales obtenidas
+- [x] Proyecto Firebase creado y credenciales obtenidas
 - [x] Scaffolding del proyecto
 - [x] lib/firebase.ts (placeholder con config comentada)
 - [x] types/vinyl.ts (interfaz Vinyl definida)
@@ -167,11 +167,11 @@ pnpm build
 - [x] App.tsx (layout SPA funcional — pendiente conectar Firebase)
 - [x] Dockerfile
 - [x] docker-compose.yml
-- [ ] Prueba Docker en Windows 11
+- [x] Prueba Docker en Windows 11
 - [ ] Memoria PDF
 
 ### 🔄 En progreso
-- Prueba Docker en Windows 11
+- [ ] Memoria PDF
 
 ### ⏳ Pendiente
 - Todo lo demás ya ha sido implementado, a falta de prueba Docker en Windows 11 y Memoria PDF.
